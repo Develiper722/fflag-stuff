@@ -3,7 +3,7 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox FFlag Tracker</title>
+    <title>Roblox FFlag Tracker (Optimized)</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <style>
@@ -28,13 +28,15 @@
 <script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
 
 <script>
-let allFlags = [];
+let allFlags = []; // Store data globally to avoid redundant fetches
 
 $(document).ready(async function() {
+    // 1. Fetch data once at the start
     try {
         const response = await fetch('flags.json');
         allFlags = await response.json();
         
+        // 2. Check URL for existing flag parameter
         const urlParams = new URLSearchParams(window.location.search);
         const initialFlag = urlParams.get('flag');
 
@@ -46,7 +48,8 @@ $(document).ready(async function() {
     } catch (err) {
         $('#mainContent').html(`<div class="alert alert-danger">Error loading flags.json</div>`);
     }
-    
+
+    // Handle Browser Back/Forward buttons
     window.onpopstate = function() {
         const params = new URLSearchParams(window.location.search);
         const flag = params.get('flag');
