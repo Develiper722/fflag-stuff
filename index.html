@@ -13,7 +13,6 @@
         .badge-active { background-color: #198754; color: white; }
         .badge-removed { background-color: #dc3545; color: white; }
         .type-tag { font-family: monospace; color: #888; font-size: 0.85rem; }
-        /* DataTable Dark Overrides */
         .dataTables_wrapper { color: #f0f0f0; }
         input[type="search"] { background: #252525 !important; border: 1px solid #444 !important; color: white !important; }
         .table-dark { --bs-table-bg: #1a1a1a; }
@@ -47,35 +46,43 @@
 
 <script>
 $(document).ready(function() {
-    $('#flagTable').DataTable({
-        "ajax": {
-            "url": "flags.json",
-            "dataSrc": ""
-        },
-        "language": {
-            // This line changes the "Show X entries" text
-            "lengthMenu": "Show _MENU_ entries per page",
-            "search": "Search Flags:",
-            "info": "Showing _START_ to _END_ of _TOTAL_ flags"
-        },
+    const table = $('#flagTable').DataTable({
+        "ajax": { "url": "flags.json", "dataSrc": "" },
         "columns": [
-            { "data": "type", "className": "type-tag" },
-            { "data": "name", "render": function(data) { return `<strong>${data}</strong>`; } },
-            { 
-                "data": "status", 
-                "render": function(data) {
-                    let cls = data === "Active" ? "badge-active" : "badge-removed";
-                    return `<span class="badge ${cls}">${data}</span>`;
-                }
-            },
+            { "data": "type" },
+            { "data": "name", "render": data => `<a href="?flag=${data}"><strong>${data}</strong></a>` },
+            { "data": "status" },
             { "data": "date" },
-            { "data": "version", "className": "small text-muted" }
-        ],
-        "pageLength": 25,
-        "order": [[ 3, "desc" ]],
-        "responsive": true
+            { "data": "version" }
+        ]
     });
+
+    const urlParams = new URLSearchParams(window.location.search);
+    const flagName = urlParams.get('flag');
+
+    if (flagName) {
+        showFlagDetail(flagName);
+    }
 });
+
+async function showFlagDetail(name) {
+    const response = await fetch('flags.json');
+    const flags = await response.json();
+    const flag = flags.find(f => f.name === name);
+
+    if (flag) {
+        document.querySelector('.card').innerHTML = `
+            <a href="index.html" class="btn btn-sm btn-outline-secondary mb-3">← Back to List</a>
+            <h2>${flag.name}</h2>
+            <hr>
+            <p><strong>Type:</strong> ${flag.type}</p>
+            <p><strong>Status:</strong> ${flag.status}</p>
+            <p><strong>Patch Date:</strong> ${flag.date}</p>
+            <p><strong>Version:</strong> ${flag.version}</p>
+            <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${flag.name}')">Copy Flag Name</button>
+        `;
+    }
+}
 </script>
 </body>
 </html>
