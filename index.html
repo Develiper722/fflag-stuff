@@ -3,28 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Roblox FFlag Tracker (JSON Edition)</title>
+    <title>Roblox FFlag Tracker</title>
     <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0/dist/css/bootstrap.min.css" rel="stylesheet">
     <link rel="stylesheet" href="https://cdn.datatables.net/1.13.6/css/dataTables.bootstrap5.min.css">
     <style>
         body { background-color: #0f0f0f; color: #f0f0f0; font-family: 'Inter', sans-serif; }
         .container { margin-top: 40px; }
-        .card { background-color: #1a1a1a; border: 1px solid #333; padding: 25px; border-radius: 12px; }
-        .badge-active { background-color: #198754; color: white; }
-        .badge-removed { background-color: #dc3545; color: white; }
-        .type-tag { font-family: monospace; color: #888; font-size: 0.85rem; }
-        .dataTables_wrapper { color: #f0f0f0; }
-        input[type="search"] { background: #252525 !important; border: 1px solid #444 !important; color: white !important; }
+        .card { background-color: #1a1a1a; border: 1px solid #333; padding: 25px; border-radius: 12px; transition: opacity 0.2s; }
+        .clickable-row { cursor: pointer; }
+        .clickable-row:hover { background-color: #252525 !important; }
         .table-dark { --bs-table-bg: #1a1a1a; }
+        input[type="search"] { background: #252525 !important; border: 1px solid #444 !important; color: white !important; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div class="card shadow-lg">
-        <h1 class="h3 mb-2">Roblox FFlag Tracker</h1>
-        <p class="text-muted mb-4">shows ya if its ur fflag injector or roblox removed it.</p>
+    <div id="mainContent" class="card shadow-lg">
+        </div>
+</div>
+
+<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
+<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
+
+<script>
+let allFlags = [];
+
+$(document).ready(async function() {
+    try {
+        const response = await fetch('flags.json');
+        allFlags = await response.json();
         
+        const urlParams = new URLSearchParams(window.location.search);
+        const initialFlag = urlParams.get('flag');
+
+        if (initialFlag) {
+            showFlagDetail(initialFlag);
+        } else {
+            showListView();
+        }
+    } catch (err) {
+        $('#mainContent').html(`<div class="alert alert-danger">Error loading flags.json</div>`);
+    }
+    
+    window.onpopstate = function() {
+        const params = new URLSearchParams(window.location.search);
+        const flag = params.get('flag');
+        flag ? showFlagDetail(flag, false) : showListView(false);
+    };
+});
+
+function showListView(pushState = true) {
+    if (pushState) history.pushState({}, '', window.location.pathname);
+
+    $('#mainContent').html(`
+        <h1 class="h3 mb-2">Roblox FFlag Tracker</h1>
+        <p class="text-muted mb-4">Click any flag to view details and status.</p>
         <table id="flagTable" class="table table-dark table-hover w-100">
             <thead>
                 <tr>
@@ -37,51 +72,57 @@
             </thead>
             <tbody></tbody>
         </table>
-    </div>
-</div>
+    `);
 
-<script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/jquery.dataTables.min.js"></script>
-<script src="https://cdn.datatables.net/1.13.6/js/dataTables.bootstrap5.min.js"></script>
-
-<script>
-$(document).ready(function() {
     const table = $('#flagTable').DataTable({
-        "ajax": { "url": "flags.json", "dataSrc": "" },
-        "columns": [
-            { "data": "type" },
-            { "data": "name", "render": data => `<a href="?flag=${data}"><strong>${data}</strong></a>` },
-            { "data": "status" },
-            { "data": "date" },
-            { "data": "version" }
-        ]
+        data: allFlags,
+        columns: [
+            { data: "type" },
+            { data: "name", render: data => `<strong>${data}</strong>` },
+            { data: "status" },
+            { data: "date" },
+            { data: "version" }
+        ],
+        createdRow: (row, data) => {
+            $(row).addClass('clickable-row').on('click', () => {
+                showFlagDetail(data.name);
+            });
+        }
     });
+}
 
-    const urlParams = new URLSearchParams(window.location.search);
-    const flagName = urlParams.get('flag');
+function showFlagDetail(name, pushState = true) {
+    const flag = allFlags.find(f => f.name === name);
+    if (!flag) return showListView();
 
-    if (flagName) {
-        showFlagDetail(flagName);
-    }
-});
+    if (pushState) history.pushState({}, '', `?flag=${name}`);
 
-async function showFlagDetail(name) {
-    const response = await fetch('flags.json');
-    const flags = await response.json();
-    const flag = flags.find(f => f.name === name);
+    $('#mainContent').html(`
+        <div class="animate-in">
+            <button class="btn btn-sm btn-outline-secondary mb-3" onclick="showListView()">← Back to List</button>
+            <h2 class="text-info">${flag.name}</h2>
+            <hr class="border-secondary">
+            <div class="row">
+                <div class="col-md-6">
+                    <p><strong>Type:</strong> <code class="text-warning">${flag.type}</code></p>
+                    <p><strong>Status:</strong> <span class="badge ${flag.status === 'Active' ? 'bg-success' : 'bg-danger'}">${flag.status}</span></p>
+                </div>
+                <div class="col-md-6">
+                    <p><strong>Patch Date:</strong> ${flag.date}</p>
+                    <p><strong>Version:</strong> ${flag.version}</p>
+                </div>
+            </div>
+            <div class="mt-4">
+                <button class="btn btn-primary" onclick="copyText('${flag.name}')">Copy Flag Name</button>
+                <button class="btn btn-outline-light" onclick="copyText('${flag.type}${flag.name}=True')">Copy FastFlag Format</button>
+            </div>
+        </div>
+    `);
+}
 
-    if (flag) {
-        document.querySelector('.card').innerHTML = `
-            <a href="index.html" class="btn btn-sm btn-outline-secondary mb-3">← Back to List</a>
-            <h2>${flag.name}</h2>
-            <hr>
-            <p><strong>Type:</strong> ${flag.type}</p>
-            <p><strong>Status:</strong> ${flag.status}</p>
-            <p><strong>Patch Date:</strong> ${flag.date}</p>
-            <p><strong>Version:</strong> ${flag.version}</p>
-            <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${flag.name}')">Copy Flag Name</button>
-        `;
-    }
+function copyText(text) {
+    navigator.clipboard.writeText(text);
+    alert('Copied: ' + text);
 }
 </script>
 </body>
