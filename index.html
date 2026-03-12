@@ -20,6 +20,7 @@
         }
         .badge-active { background-color: #198754; }
         .badge-removed { background-color: #dc3545; }
+        .copy-success { background-color: #198754 !important; color: white !important; border-color: #198754 !important; }
     </style>
 </head>
 <body>
@@ -36,6 +37,11 @@
 let allFlags = [];
 let currentSearch = "";
 let currentStatusFilter = "";
+
+$.fn.dataTable.ext.search.push(function(settings, data) {
+    const status = data[2];
+    return currentStatusFilter === "" || status.includes(currentStatusFilter);
+});
 
 $(document).ready(async function() {
     try {
@@ -83,6 +89,7 @@ function showListView(pushState = true) {
     const table = $('#flagTable').DataTable({
         data: allFlags,
         search: { "search": currentSearch },
+        destroy: true,
         columns: [
             { data: "type" },
             { data: "name", render: d => `<strong>${d}</strong>` },
@@ -95,11 +102,6 @@ function showListView(pushState = true) {
                 showFlagDetail(data.name);
             });
         }
-    });
-
-    $.fn.dataTable.ext.search.push(function(settings, data) {
-        const status = data[2];
-        return currentStatusFilter === "" || status === currentStatusFilter;
     });
 
     $('#statusFilter').on('change', function() {
@@ -116,18 +118,13 @@ function showFlagDetail(name, pushState = true) {
 
     if (pushState) history.pushState({}, '', `?flag=${name}`);
 
-    // If type is "C++", we use "FFlag", otherwise use the type from JSON
-    const cleanType = (flag.type === "C++") ? "FFlag" : flag.type;
-    const jsonString = `"${cleanType}${flag.name}": "True"`;
-    const bloxstrapFormat = `${cleanType}${flag.name}=True`;
-
     $('#mainContent').html(`
         <button class="btn btn-sm btn-outline-secondary mb-3" onclick="showListView()">← Back to Results</button>
         <h2 class="text-info">${flag.name}</h2>
         <hr class="border-secondary">
         <div class="row mb-4">
             <div class="col-sm-6">
-                <p class="mb-1 text-muted small text-uppercase">Raw Type</p>
+                <p class="mb-1 text-muted small text-uppercase">Type</p>
                 <p class="h5">${flag.type}</p>
             </div>
             <div class="col-sm-6">
@@ -136,13 +133,25 @@ function showFlagDetail(name, pushState = true) {
             </div>
         </div>
         <div class="p-3 rounded bg-dark border border-secondary mb-4">
-            <code id="jsonCode">${jsonString}</code>
+            <code>"${flag.name}": "True"</code>
         </div>
         <div class="d-flex gap-2">
-            <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${flag.name}')">Copy Name</button>
-            <button class="btn btn-outline-light" onclick="navigator.clipboard.writeText('${bloxstrapFormat}')">Copy for Bloxstrap</button>
+            <button class="btn btn-primary" onclick="copyToClipboard(this, '${flag.name}', 'Copy Name')">Copy Name</button>
+            <button class="btn btn-outline-light" onclick="copyToClipboard(this, '${flag.name}=True', 'Copy Full Flag')">Copy Full Flag</button>
         </div>
     `);
+}
+
+function copyToClipboard(button, text, originalText) {
+    navigator.clipboard.writeText(text).then(() => {
+        button.innerText = "Copied!";
+        button.classList.add('copy-success');
+        
+        setTimeout(() => {
+            button.innerText = originalText;
+            button.classList.remove('copy-success');
+        }, 1500);
+    });
 }
 </script>
 </body>
