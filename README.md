@@ -5,7 +5,7 @@
 # how to get the fflags.json file urself 
 first download grabflags.py and converttojson.py
 
-second get a github private access token https://github.com/settings/personal-access-tokens
+second get a github [private access token](https://github.com/settings/personal-access-tokens)
 
 leave everything on default
 
