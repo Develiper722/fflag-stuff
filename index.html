@@ -116,13 +116,18 @@ function showFlagDetail(name, pushState = true) {
 
     if (pushState) history.pushState({}, '', `?flag=${name}`);
 
+    // If type is "C++", we use "FFlag", otherwise use the type from JSON
+    const cleanType = (flag.type === "C++") ? "FFlag" : flag.type;
+    const jsonString = `"${cleanType}${flag.name}": "True"`;
+    const bloxstrapFormat = `${cleanType}${flag.name}=True`;
+
     $('#mainContent').html(`
         <button class="btn btn-sm btn-outline-secondary mb-3" onclick="showListView()">← Back to Results</button>
         <h2 class="text-info">${flag.name}</h2>
         <hr class="border-secondary">
         <div class="row mb-4">
             <div class="col-sm-6">
-                <p class="mb-1 text-muted small text-uppercase">Type</p>
+                <p class="mb-1 text-muted small text-uppercase">Raw Type</p>
                 <p class="h5">${flag.type}</p>
             </div>
             <div class="col-sm-6">
@@ -131,11 +136,11 @@ function showFlagDetail(name, pushState = true) {
             </div>
         </div>
         <div class="p-3 rounded bg-dark border border-secondary mb-4">
-            <code>"${flag.type}${flag.name}": "True"</code>
+            <code id="jsonCode">${jsonString}</code>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-primary" onclick="navigator.clipboard.writeText('${flag.name}')">Copy Name</button>
-            <button class="btn btn-outline-light" onclick="navigator.clipboard.writeText('${flag.type}${flag.name}=True')">Copy Full Flag</button>
+            <button class="btn btn-outline-light" onclick="navigator.clipboard.writeText('${bloxstrapFormat}')">Copy for Bloxstrap</button>
         </div>
     `);
 }
