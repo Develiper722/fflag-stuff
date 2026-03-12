@@ -49,8 +49,14 @@
 $(document).ready(function() {
     $('#flagTable').DataTable({
         "ajax": {
-            "url": "flags.json", // Path to your generated JSON file
+            "url": "flags.json",
             "dataSrc": ""
+        },
+        "language": {
+            // This line changes the "Show X entries" text
+            "lengthMenu": "Show _MENU_ entries per page",
+            "search": "Search Flags:",
+            "info": "Showing _START_ to _END_ of _TOTAL_ flags"
         },
         "columns": [
             { "data": "type", "className": "type-tag" },
@@ -66,7 +72,7 @@ $(document).ready(function() {
             { "data": "version", "className": "small text-muted" }
         ],
         "pageLength": 25,
-        "order": [[ 3, "desc" ]], // Newest patches first
+        "order": [[ 3, "desc" ]],
         "responsive": true
     });
 });
