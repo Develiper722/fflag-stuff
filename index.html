@@ -10,23 +10,51 @@
         body { background-color: #0f0f0f; color: #f0f0f0; font-family: 'Inter', sans-serif; }
         .container { margin-top: 40px; }
         .card { background-color: #1a1a1a; border: 1px solid #333; padding: 25px; border-radius: 12px; }
-        .clickable-row { cursor: pointer; }
+        .clickable-row { cursor: pointer; transition: background 0.2s; }
         .clickable-row:hover { background-color: #252525 !important; }
         .table-dark { --bs-table-bg: #1a1a1a; }
         input[type="search"], .form-select { 
-            background: #252525 !important; 
-            border: 1px solid #444 !important; 
-            color: white !important; 
+            background: #252525 !important; border: 1px solid #444 !important; color: white !important; 
         }
         .badge-active { background-color: #198754; }
         .badge-removed { background-color: #dc3545; }
         .copy-success { background-color: #198754 !important; color: white !important; border-color: #198754 !important; }
+        .detail-label { color: #888; text-transform: uppercase; font-size: 0.75rem; letter-spacing: 1px; margin-bottom: 2px; }
+        .detail-value { font-size: 1.1rem; margin-bottom: 15px; color: #fff; }
+        #detailView { display: none; }
     </style>
 </head>
 <body>
 
 <div class="container">
-    <div id="mainContent" class="card shadow-lg"></div>
+    <div class="card shadow-lg">
+        <div id="listView">
+            <div class="d-flex justify-content-between align-items-center mb-4">
+                <h1 class="h3 m-0">Roblox FFlag Tracker</h1>
+                <select id="statusFilter" class="form-select w-25">
+                    <option value="">All Statuses</option>
+                    <option value="Active">Active Only</option>
+                    <option value="Removed">Removed Only</option>
+                </select>
+            </div>
+            <table id="flagTable" class="table table-dark table-hover w-100">
+                <thead>
+                    <tr>
+                        <th>Type</th>
+                        <th>Flag Name</th>
+                        <th>Status</th>
+                        <th>Patch Date</th>
+                    </tr>
+                </thead>
+                <tbody></tbody>
+            </table>
+        </div>
+
+        <div id="detailView">
+            <button class="btn btn-sm btn-outline-secondary mb-4" onclick="showListView()">← Back to Results</button>
+            <div id="detailContent"></div>
+        </div>
+    </div>
 </div>
 
 <script src="https://code.jquery.com/jquery-3.7.0.min.js"></script>
@@ -35,23 +63,22 @@
 
 <script>
 let allFlags = [];
-let currentSearch = "";
-let currentStatusFilter = "";
-
-$.fn.dataTable.ext.search.push(function(settings, data) {
-    const status = data[2];
-    return currentStatusFilter === "" || status.includes(currentStatusFilter);
-});
+let dataTable;
 
 $(document).ready(async function() {
     try {
         const response = await fetch('flags.json');
         allFlags = await response.json();
+        
+        initTable();
+        
         const urlParams = new URLSearchParams(window.location.search);
         const initialFlag = urlParams.get('flag');
-        initialFlag ? showFlagDetail(initialFlag) : showListView();
+        if (initialFlag) {
+            showFlagDetail(initialFlag, false);
+        }
     } catch (err) {
-        $('#mainContent').html(`<div class="alert alert-danger">Error loading data.</div>`);
+        $('#listView').html(`<div class="alert alert-danger">Error loading data.</div>`);
     }
 
     window.onpopstate = function() {
@@ -61,35 +88,9 @@ $(document).ready(async function() {
     };
 });
 
-function showListView(pushState = true) {
-    if (pushState) history.pushState({}, '', window.location.pathname);
-
-    $('#mainContent').html(`
-        <div class="d-flex justify-content-between align-items-center mb-4">
-            <h1 class="h3 m-0">Roblox FFlag Tracker</h1>
-            <select id="statusFilter" class="form-select w-25">
-                <option value="">All Statuses</option>
-                <option value="Active" ${currentStatusFilter === 'Active' ? 'selected' : ''}>Active Only</option>
-                <option value="Removed" ${currentStatusFilter === 'Removed' ? 'selected' : ''}>Removed Only</option>
-            </select>
-        </div>
-        <table id="flagTable" class="table table-dark table-hover w-100">
-            <thead>
-                <tr>
-                    <th>Type</th>
-                    <th>Flag Name</th>
-                    <th>Status</th>
-                    <th>Patch Date</th>
-                </tr>
-            </thead>
-            <tbody></tbody>
-        </table>
-    `);
-
-    const table = $('#flagTable').DataTable({
+function initTable() {
+    dataTable = $('#flagTable').DataTable({
         data: allFlags,
-        search: { "search": currentSearch },
-        destroy: true,
         columns: [
             { data: "type" },
             { data: "name", render: d => `<strong>${d}</strong>` },
@@ -97,19 +98,19 @@ function showListView(pushState = true) {
             { data: "date" }
         ],
         createdRow: (row, data) => {
-            $(row).addClass('clickable-row').on('click', () => {
-                currentSearch = table.search();
-                showFlagDetail(data.name);
-            });
+            $(row).addClass('clickable-row').on('click', () => showFlagDetail(data.name));
         }
     });
 
     $('#statusFilter').on('change', function() {
-        currentStatusFilter = $(this).val();
-        table.draw();
+        dataTable.column(2).search($(this).val()).draw();
     });
+}
 
-    table.draw();
+function showListView(pushState = true) {
+    if (pushState) history.pushState({}, '', window.location.pathname);
+    $('#detailView').hide();
+    $('#listView').fadeIn(150);
 }
 
 function showFlagDetail(name, pushState = true) {
@@ -118,39 +119,46 @@ function showFlagDetail(name, pushState = true) {
 
     if (pushState) history.pushState({}, '', `?flag=${name}`);
 
-    $('#mainContent').html(`
-        <button class="btn btn-sm btn-outline-secondary mb-3" onclick="showListView()">← Back to Results</button>
-        <h2 class="text-info">${flag.name}</h2>
-        <hr class="border-secondary">
-        <div class="row mb-4">
-            <div class="col-sm-6">
-                <p class="mb-1 text-muted small text-uppercase">Type</p>
-                <p class="h5">${flag.type}</p>
-            </div>
-            <div class="col-sm-6">
-                <p class="mb-1 text-muted small text-uppercase">Status</p>
-                <p class="h5 text-${flag.status === 'Active' ? 'success' : 'danger'}">${flag.status}</p>
-            </div>
-        </div>
-        <div class="p-3 rounded bg-dark border border-secondary mb-4">
-            <code>"${flag.name}": "True"</code>
+    let infoHtml = `<h2 class="text-info mb-1">${flag.name}</h2><hr class="border-secondary mb-4">`;
+    infoHtml += `<div class="row">`;
+    
+    for (const [key, value] of Object.entries(flag)) {
+        if (key === 'name') continue; 
+        const displayKey = key.charAt(0).toUpperCase() + key.slice(1);
+        const statusClass = value === 'Active' ? 'text-success' : (value === 'Removed' ? 'text-danger' : '');
+        
+        infoHtml += `
+            <div class="col-md-4 col-sm-6">
+                <div class="detail-label">${displayKey}</div>
+                <div class="detail-value ${statusClass}">${value || 'N/A'}</div>
+            </div>`;
+    }
+    infoHtml += `</div>`;
+
+    infoHtml += `
+        <div class="p-3 rounded bg-dark border border-secondary my-4">
+            <code id="rawCode">"${flag.name}": "True"</code>
         </div>
         <div class="d-flex gap-2">
             <button class="btn btn-primary" onclick="copyToClipboard(this, '${flag.name}', 'Copy Name')">Copy Name</button>
             <button class="btn btn-outline-light" onclick="copyToClipboard(this, '${flag.name}=True', 'Copy Full Flag')">Copy Full Flag</button>
         </div>
-    `);
+    `;
+
+    $('#detailContent').html(infoHtml);
+    $('#listView').hide();
+    $('#detailView').fadeIn(150);
 }
 
 function copyToClipboard(button, text, originalText) {
     navigator.clipboard.writeText(text).then(() => {
+        const oldText = button.innerText;
         button.innerText = "Copied!";
         button.classList.add('copy-success');
-        
         setTimeout(() => {
             button.innerText = originalText;
             button.classList.remove('copy-success');
-        }, 1500);
+        }, 1200);
     });
 }
 </script>
